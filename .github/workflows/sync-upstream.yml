@@ -1,0 +1,71 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: "21 3 * * *"
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to sync from upstream"
+        required: false
+        default: "ver/26.1.2"
+      run-build:
+        description: "Dispatch Luminol CI after syncing"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: sync-upstream-${{ inputs.branch || 'ver/26.1.2' }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'Linwendong83/Luminol'
+    runs-on: ubuntu-latest
+    env:
+      UPSTREAM_REPOSITORY: LuminolMC/Luminol
+      SYNC_BRANCH: ${{ inputs.branch || 'ver/26.1.2' }}
+    steps:
+      - name: Checkout Fork
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ env.SYNC_BRANCH }}
+
+      - name: Merge Upstream
+        id: sync
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream "https://github.com/${UPSTREAM_REPOSITORY}.git"
+          git fetch origin "${SYNC_BRANCH}"
+          git fetch upstream "${SYNC_BRANCH}"
+          git checkout -B "${SYNC_BRANCH}" "origin/${SYNC_BRANCH}"
+
+          if git merge-base --is-ancestor "upstream/${SYNC_BRANCH}" HEAD; then
+            echo "Branch already contains upstream/${SYNC_BRANCH}."
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          git merge --no-edit "upstream/${SYNC_BRANCH}"
+          git push origin "HEAD:${SYNC_BRANCH}"
+          echo "changed=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Run Luminol CI
+        if: steps.sync.outputs.changed == 'true' && (github.event_name == 'schedule' || inputs['run-build'] == 'true')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run build.yml --ref "${SYNC_BRANCH}"
