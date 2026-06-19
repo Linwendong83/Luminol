@@ -1,32 +1,27 @@
 package me.earthme.luminol.api.entity.player;
 
-import org.apache.commons.lang3.Validate;
+import io.papermc.paper.event.player.AbstractRespawnEvent;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * A simple event fired when the respawn process of player is done
+ * Fired after the Folia async respawn process has placed a player in the respawn world.
  */
-public class PostPlayerRespawnEvent extends Event {
+public class PostPlayerRespawnEvent extends AbstractRespawnEvent {
     private static final HandlerList HANDLERS = new HandlerList();
 
-    private final Player player;
-
-    public PostPlayerRespawnEvent(Player player) {
-        Validate.notNull(player, "Player cannot be a null value!");
-
-        this.player = player;
-    }
-
-    /**
-     * Get the respawned player
-     *
-     * @return the player
-     */
-    public @NotNull Player getPlayer() {
-        return this.player;
+    public PostPlayerRespawnEvent(
+        @NotNull Player player,
+        @NotNull Location respawnLocation,
+        boolean bedSpawn,
+        boolean anchorSpawn,
+        boolean missingRespawnBlock,
+        @NotNull PlayerRespawnEvent.RespawnReason respawnReason
+    ) {
+        super(player, respawnLocation, bedSpawn, anchorSpawn, missingRespawnBlock, respawnReason);
     }
 
     @Override

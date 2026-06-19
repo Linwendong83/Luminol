@@ -2,16 +2,17 @@ package me.earthme.luminol.api.entity;
 
 import org.apache.commons.lang3.Validate;
 import org.bukkit.Location;
+import org.bukkit.PortalType;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * A simple event created for missing teleport events api of folia
- * This event will be fired when a portal teleportation is about to happen
+ * Fired before the vanilla portal process removes an entity from its current world.
  */
 public class PreEntityPortalEvent extends Event implements Cancellable {
     private static final HandlerList HANDLERS = new HandlerList();
@@ -19,17 +20,29 @@ public class PreEntityPortalEvent extends Event implements Cancellable {
     private final Entity entity;
     private final Location portalPos;
     private final World destination;
+    private final PortalType portalType;
+    private final PlayerTeleportEvent.TeleportCause teleportCause;
 
     private boolean cancelled = false;
 
-    public PreEntityPortalEvent(Entity entity, Location portalPos, World destination) {
+    public PreEntityPortalEvent(
+        @NotNull Entity entity,
+        @NotNull Location portalPos,
+        @NotNull World destination,
+        @NotNull PortalType portalType,
+        @NotNull PlayerTeleportEvent.TeleportCause teleportCause
+    ) {
         Validate.notNull(entity, "entity cannot be null!");
         Validate.notNull(portalPos, "portalPos cannot be null!");
         Validate.notNull(destination, "destination cannot be null!");
+        Validate.notNull(portalType, "portalType cannot be null!");
+        Validate.notNull(teleportCause, "teleportCause cannot be null!");
 
         this.entity = entity;
-        this.portalPos = portalPos;
+        this.portalPos = portalPos.clone();
         this.destination = destination;
+        this.portalType = portalType;
+        this.teleportCause = teleportCause;
     }
 
     /**
@@ -47,7 +60,7 @@ public class PreEntityPortalEvent extends Event implements Cancellable {
      * @return the portal location
      */
     public @NotNull Location getPortalPos() {
-        return this.portalPos;
+        return this.portalPos.clone();
     }
 
     /**
@@ -57,6 +70,24 @@ public class PreEntityPortalEvent extends Event implements Cancellable {
      */
     public @NotNull World getDestination() {
         return this.destination;
+    }
+
+    /**
+     * Get the vanilla portal type being processed.
+     *
+     * @return the portal type
+     */
+    public @NotNull PortalType getPortalType() {
+        return this.portalType;
+    }
+
+    /**
+     * Get the Bukkit teleport cause that will be used for this portal process.
+     *
+     * @return the teleport cause
+     */
+    public @NotNull PlayerTeleportEvent.TeleportCause getTeleportCause() {
+        return this.teleportCause;
     }
 
     @Override
