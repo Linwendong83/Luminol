@@ -1,5 +1,5 @@
 > [!NOTE]
-> 这是 [Linwendong83/Luminol](https://github.com/Linwendong83/Luminol) 维护的 Luminol fork。它保留上游 [LuminolMC/Luminol](https://github.com/LuminolMC/Luminol) 的构建方式，并通过 GitHub Actions 每天自动同步 `ver/26.1.2` 分支的上游更新；同步成功后会自动触发同一套 Luminol CI 构建。当前 fork 的修改聚焦于补全 Folia 传送和重生流程中的事件 API：为实体传送门前后事件、`PortalLocateEvent` 和玩家重生后事件补充位置、传送原因、传送门类型等上下文，并允许 `PortalLocateEvent` 在同一目标世界内调整目的地。
+> 当前 fork 的修改聚焦于补全 Folia 传送和重生流程中的事件 API：为实体传送门前后事件、PortalLocateEvent 和玩家重生后事件补充位置、传送原因、传送门类型等上下文，并允许 PortalLocateEvent 在同一目标世界内调整目的地。
 
 <div align="center">
   <img src="./public/image/Luminol_5.png" alt="Luminol Logo" width="300">
