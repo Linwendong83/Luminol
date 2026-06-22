@@ -10,9 +10,9 @@ on:
         required: false
         default: "ver/26.1.2"
       run-build:
-        description: "Dispatch Luminol CI after syncing"
+        description: "Dispatch an extra Luminol CI run after syncing"
         required: false
-        default: "true"
+        default: "false"
         type: choice
         options:
           - "true"
@@ -35,19 +35,27 @@ jobs:
       SYNC_BRANCH: ${{ inputs.branch || 'ver/26.1.2' }}
     steps:
       - name: Checkout Fork
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ env.SYNC_BRANCH }}
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
 
       - name: Merge Upstream
         id: sync
         shell: bash
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
         run: |
           set -euo pipefail
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "${SYNC_TOKEN}" ]; then
+            echo "used_sync_token=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "used_sync_token=false" >> "${GITHUB_OUTPUT}"
+          fi
 
           git remote add upstream "https://github.com/${UPSTREAM_REPOSITORY}.git"
           git fetch origin "${SYNC_BRANCH}"
@@ -60,12 +68,23 @@ jobs:
             exit 0
           fi
 
-          git merge --no-edit "upstream/${SYNC_BRANCH}"
+          git merge --no-edit --no-commit --no-ff "upstream/${SYNC_BRANCH}"
+
+          if git diff --cached --name-only -- .github/workflows | grep -q . && [ -z "${SYNC_TOKEN}" ]; then
+            git merge --abort
+            {
+              echo "::error::Sync would update files under .github/workflows, but GITHUB_TOKEN cannot push workflow file changes."
+              echo "::error::Add an Actions secret named SYNC_TOKEN with repository contents write access and workflow write permission, then rerun this workflow."
+            }
+            exit 1
+          fi
+
+          git commit --no-edit
           git push origin "HEAD:${SYNC_BRANCH}"
           echo "changed=true" >> "${GITHUB_OUTPUT}"
 
       - name: Run Luminol CI
-        if: steps.sync.outputs.changed == 'true' && (github.event_name == 'schedule' || inputs['run-build'] == 'true')
+        if: steps.sync.outputs.changed == 'true' && ((github.event_name == 'workflow_dispatch' && inputs['run-build'] == 'true') || (github.event_name == 'schedule' && steps.sync.outputs.used_sync_token == 'false'))
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
         run: gh workflow run build.yml --ref "${SYNC_BRANCH}"
