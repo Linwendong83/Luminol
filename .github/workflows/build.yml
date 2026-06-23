@@ -9,6 +9,10 @@ on:
       - "**"
   workflow_dispatch:
     inputs:
+      checkout-ref:
+        description: "Git ref to check out before building"
+        required: false
+        default: ""
       force-release:
         description: "Force disable release if you enter false, force release if you enter true, default release if not released else skip release"
         required: false
@@ -21,6 +25,28 @@ on:
         description: "Add comments to release"
         required: false
         default: ""
+  workflow_call:
+    inputs:
+      checkout-ref:
+        description: "Git ref to check out before building"
+        required: false
+        default: ""
+        type: string
+      force-release:
+        description: "Force disable release if you enter false, force release if you enter true, default release if not released else skip release"
+        required: false
+        default: ""
+        type: string
+      force-push:
+        description: "Force disable push to repo if you enter false, force push to repo if you enter true, default push if not released else skip push repo"
+        required: false
+        default: ""
+        type: string
+      comments:
+        description: "Add comments to release"
+        required: false
+        default: ""
+        type: string
 
 permissions: write-all
 
@@ -33,6 +59,8 @@ jobs:
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs['checkout-ref'] || github.ref }}
 
       - name: Set Up JDK
         uses: actions/setup-java@v5
