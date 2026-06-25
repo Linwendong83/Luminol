@@ -181,7 +181,7 @@ index b95bd2838d6a275acfebb36152810f9e93614f81..713e1005cb81123a9c3ff64e87d62afc
          );
 
 
-@@ -232,7 +234,7 @@ public class TheEndGatewayBlockEntity extends TheEndPortalBlockEntity {
+@@ -232,6 +234,6 @@ public class TheEndGatewayBlockEntity extends TheEndPortalBlockEntity {
                  teleport, net.minecraft.world.entity.Entity.TELEPORT_FLAG_LOAD_CHUNK | net.minecraft.world.entity.Entity.TELEPORT_FLAG_TELEPORT_PASSENGERS,
                  (net.minecraft.world.entity.Entity teleportedEntity) -> {
                      // adjust to the final exit position
