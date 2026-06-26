@@ -8,7 +8,14 @@ diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server
 index ba2f1b54ea80506f304a264d32c18e0fdc4f444f..cfde8ef58dfb0ef68bd6acc7847daf79bc7831e9 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -1826,6 +1826,16 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1787,3 +1787,6 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+         ca.spottedleaf.concurrentutil.completable.CallbackCompletable<org.bukkit.Location> spawnPosComplete =
+             new ca.spottedleaf.concurrentutil.completable.CallbackCompletable<>();
+         boolean[] usedRespawnAnchor = new boolean[1];
++        boolean[] postRespawnBedSpawn = new boolean[1];
++        boolean[] postRespawnAnchorSpawn = new boolean[1];
++        boolean[] postRespawnMissingBlock = new boolean[1];
+@@ -1826,6 +1829,16 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
                      if (finalRespawnCompleteCallback != null) { // Luminol - Level hot unload apis
                          finalRespawnCompleteCallback.accept(ServerPlayer.this); // Luminol - Level hot unload apis
                      }
@@ -16,15 +23,29 @@ index ba2f1b54ea80506f304a264d32c18e0fdc4f444f..cfde8ef58dfb0ef68bd6acc7847daf79
 +                    new me.earthme.luminol.api.entity.player.PostPlayerRespawnEvent(
 +                            ServerPlayer.this.getBukkitEntity(),
 +                            spawnLoc,
-+                            false,
-+                            usedRespawnAnchor[0],
-+                            false,
++                            postRespawnBedSpawn[0],
++                            postRespawnAnchorSpawn[0],
++                            postRespawnMissingBlock[0],
 +                            reason
 +                    ).callEvent();
 +                    // Luminol end
                  }
              );
          });
+@@ -1848,6 +1861,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+                         respawnWorld, respawnConfig, !alive
+                     ).orElse(null);
+                     if (spawnPos == null) {
++                        postRespawnMissingBlock[0] = true;
+                         // no spawn
+                         ServerPlayer.this.connection.send(
+                             new ClientboundGameEventPacket(ClientboundGameEventPacket.NO_RESPAWN_BLOCK_AVAILABLE, 0.0F)
+@@ -1863,3 +1877,5 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+                     boolean isRespawnAnchor = respawnWorld.getBlockState(respawnConfig.respawnData.pos()).is(net.minecraft.world.level.block.Blocks.RESPAWN_ANCHOR);
+                     boolean isBed = respawnWorld.getBlockState(respawnConfig.respawnData.pos()).is(net.minecraft.tags.BlockTags.BEDS);
+                     usedRespawnAnchor[0] = !alive && isRespawnAnchor;
++                    postRespawnBedSpawn[0] = spawnPos.isBedSpawn();
++                    postRespawnAnchorSpawn[0] = spawnPos.isAnchorSpawn();
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
 index 7c4f9a600183462f4e9bd31f9a4086bb0d653deb..64cd0f36fb71e3b14ad87389d353575f1cf513bb 100644
 --- a/net/minecraft/world/entity/Entity.java
