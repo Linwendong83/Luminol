@@ -5,16 +5,19 @@ Subject: [PATCH] Add missing teleportation event APIs for folia
 
 
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index ba2f1b54ea80506f304a264d32c18e0fdc4f444f..cfde8ef58dfb0ef68bd6acc7847daf79bc7831e9 100644
+index ba2f1b54ea80506f304a264d32c18e0fdc4f444f..a6a4c0f8abfb4c0c00f62a29aacf94172262a396 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -1787,3 +1787,6 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1790,6 +1790,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
          ca.spottedleaf.concurrentutil.completable.CallbackCompletable<org.bukkit.Location> spawnPosComplete =
              new ca.spottedleaf.concurrentutil.completable.CallbackCompletable<>();
          boolean[] usedRespawnAnchor = new boolean[1];
 +        boolean[] postRespawnBedSpawn = new boolean[1];
 +        boolean[] postRespawnAnchorSpawn = new boolean[1];
 +        boolean[] postRespawnMissingBlock = new boolean[1];
+
+         // set up post spawn location logic
+         spawnPosComplete.addWaiter((spawnLoc, throwable) -> {
 @@ -1826,6 +1829,16 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
                      if (finalRespawnCompleteCallback != null) { // Luminol - Level hot unload apis
                          finalRespawnCompleteCallback.accept(ServerPlayer.this); // Luminol - Level hot unload apis
@@ -32,7 +35,7 @@ index ba2f1b54ea80506f304a264d32c18e0fdc4f444f..cfde8ef58dfb0ef68bd6acc7847daf79
                  }
              );
          });
-@@ -1848,6 +1861,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1845,6 +1858,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
                          respawnWorld, respawnConfig, !alive
                      ).orElse(null);
                      if (spawnPos == null) {
@@ -40,158 +43,12 @@ index ba2f1b54ea80506f304a264d32c18e0fdc4f444f..cfde8ef58dfb0ef68bd6acc7847daf79
                          // no spawn
                          ServerPlayer.this.connection.send(
                              new ClientboundGameEventPacket(ClientboundGameEventPacket.NO_RESPAWN_BLOCK_AVAILABLE, 0.0F)
-@@ -1863,3 +1877,5 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1860,6 +1874,8 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
                      boolean isRespawnAnchor = respawnWorld.getBlockState(respawnConfig.respawnData.pos()).is(net.minecraft.world.level.block.Blocks.RESPAWN_ANCHOR);
                      boolean isBed = respawnWorld.getBlockState(respawnConfig.respawnData.pos()).is(net.minecraft.tags.BlockTags.BEDS);
                      usedRespawnAnchor[0] = !alive && isRespawnAnchor;
 +                    postRespawnBedSpawn[0] = spawnPos.isBedSpawn();
 +                    postRespawnAnchorSpawn[0] = spawnPos.isAnchorSpawn();
-diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 7c4f9a600183462f4e9bd31f9a4086bb0d653deb..64cd0f36fb71e3b14ad87389d353575f1cf513bb 100644
---- a/net/minecraft/world/entity/Entity.java
-+++ b/net/minecraft/world/entity/Entity.java
-@@ -4478,6 +4478,31 @@ public abstract class Entity
-         // Luminol end
- 
-         // TODO any events that can modify go HERE
-+        // Luminol start - Add missing teleportation apis
-+        org.bukkit.Location destinationLoc;
-+
-+        if (pitch == null) {
-+            if (yaw == null) {
-+                destinationLoc = io.papermc.paper.util.MCUtil.toLocation(destination, pos, Float.NaN, Float.NaN);
-+            } else {
-+                destinationLoc = io.papermc.paper.util.MCUtil.toLocation(destination, pos, yaw, Float.NaN);
-+            }
-+        }else {
-+            if (yaw == null) {
-+                destinationLoc = io.papermc.paper.util.MCUtil.toLocation(destination, pos, Float.NaN, pitch);
-+            }else {
-+                destinationLoc = io.papermc.paper.util.MCUtil.toLocation(destination, pos, yaw, pitch);
-+            }
-+        }
-+
-+        final me.earthme.luminol.api.entity.EntityTeleportAsyncEvent wrapped = new me.earthme.luminol.api.entity.EntityTeleportAsyncEvent(
-+                this.getBukkitEntity(),
-+                cause,
-+                destinationLoc
-+        );
-+
-+        wrapped.callEvent();
-+        // Luminol end
- 
-         // check for same region
-         if (destination == this.level()
-@@ -4596,6 +4621,21 @@ public abstract class Entity
-             case END: {
-                 if (destination.getTypeKey() == net.minecraft.world.level.dimension.LevelStem.END) {
-                     BlockPos targetPos = ServerLevel.END_SPAWN_POINT;
-+                    // Luminol start - Add missing teleportation apis
-+                    final org.bukkit.Location orginalPortalLocation = io.papermc.paper.util.MCUtil.toLocation(origin, originPortal);
-+                    final org.bukkit.Location targetPortalLocation = io.papermc.paper.util.MCUtil.toLocation(destination, targetPos);
-+
-+                    final me.earthme.luminol.api.portal.PortalLocateEvent portalLocateEvent = new me.earthme.luminol.api.portal.PortalLocateEvent(
-+                            this.getBukkitEntity(),
-+                            orginalPortalLocation,
-+                            targetPortalLocation,
-+                            destination.getWorld(),
-+                            org.bukkit.PortalType.ENDER,
-+                            org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_PORTAL
-+                    );
-+
-+                    portalLocateEvent.callEvent();
-+                    // Luminol end
-                     // need to load chunks so we can create the platform
-                     destination.moonrise$loadChunksAsync(
-                         targetPos, 16, // load 16 blocks to be safe from block physics
-@@ -4621,6 +4661,21 @@ public abstract class Entity
-                     );
-                 } else {
-                     BlockPos spawnPos = destination.getRespawnData().pos();
-+                    // Luminol start - Add missing teleportation apis
-+                    final org.bukkit.Location orginalPortalLocation = io.papermc.paper.util.MCUtil.toLocation(origin, originPortal);
-+                    final org.bukkit.Location targetPortalLocation = io.papermc.paper.util.MCUtil.toLocation(destination, spawnPos);
-+
-+                    final me.earthme.luminol.api.portal.PortalLocateEvent portalLocateEvent = new me.earthme.luminol.api.portal.PortalLocateEvent(
-+                            this.getBukkitEntity(),
-+                            orginalPortalLocation,
-+                            targetPortalLocation,
-+                            destination.getWorld(),
-+                            org.bukkit.PortalType.ENDER,
-+                            org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_PORTAL
-+                    );
-+
-+                    portalLocateEvent.callEvent();
-+                    // Luminol end
-                     // need to load chunk for heightmap
-                     destination.moonrise$loadChunksAsync(
-                         spawnPos, 0,
-@@ -4676,7 +4731,21 @@ public abstract class Entity
-                 WorldBorder destinationBorder = destination.getWorldBorder();
-                 double dimensionScale = net.minecraft.world.level.dimension.DimensionType.getTeleportationScale(origin.dimensionType(), destination.dimensionType());
-                 BlockPos targetPos = destination.getWorldBorder().clampToBounds(this.getX() * dimensionScale, this.getY(), this.getZ() * dimensionScale);
-+                // Luminol start - Add missing teleportation apis
-+                final org.bukkit.Location orginalPortalLocation = io.papermc.paper.util.MCUtil.toLocation(origin, originPortal);
-+                final org.bukkit.Location targetPortalLocation = io.papermc.paper.util.MCUtil.toLocation(destination, targetPos);
- 
-+                final me.earthme.luminol.api.portal.PortalLocateEvent portalLocateEvent = new me.earthme.luminol.api.portal.PortalLocateEvent(
-+                        this.getBukkitEntity(),
-+                        orginalPortalLocation,
-+                        targetPortalLocation,
-+                        destination.getWorld(),
-+                        org.bukkit.PortalType.NETHER,
-+                        org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.NETHER_PORTAL
-+                );
-+
-+                portalLocateEvent.callEvent();
-+                // Luminol end
-                 ca.spottedleaf.concurrentutil.completable.CallbackCompletable<BlockUtil.FoundRectangle> portalFound
-                     = new ca.spottedleaf.concurrentutil.completable.CallbackCompletable<>();
- 
-@@ -4813,6 +4884,19 @@ public abstract class Entity
-         if (!this.canPortalAsync(destination, takePassengers)) {
-             return false;
-         }
-+        // Luminol start - Add missing teleportation events
-+        if (!new me.earthme.luminol.api.entity.PreEntityPortalEvent(
-+                this.getBukkitEntity(),
-+                io.papermc.paper.util.MCUtil.toLocation(this.level, portalPos),
-+                destination.getWorld(),
-+                type == PortalType.END ? org.bukkit.PortalType.ENDER : org.bukkit.PortalType.NETHER,
-+                type == PortalType.END
-+                        ? org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_PORTAL
-+                        : org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.NETHER_PORTAL
-+        ).callEvent()) {
-+            return false;
-+        }
-+        // Luminol end
- 
-         // Kaiiju start - sync end platform spawning & entity teleportation
-         final java.util.function.Consumer<Entity> tpComplete = type == PortalType.END && destination.getTypeKey() == net.minecraft.world.level.dimension.LevelStem.END ?
-diff --git a/net/minecraft/world/level/block/entity/TheEndGatewayBlockEntity.java b/net/minecraft/world/level/block/entity/TheEndGatewayBlockEntity.java
-index 832e04b97ffae60127537c0a8eb448af6602da1e..613b96b3fdce3ac051ee9b523da0ecd20f92e223 100644
---- a/net/minecraft/world/level/block/entity/TheEndGatewayBlockEntity.java
-+++ b/net/minecraft/world/level/block/entity/TheEndGatewayBlockEntity.java
-@@ -192,6 +192,22 @@ public class TheEndGatewayBlockEntity extends TheEndPortalBlockEntity {
-             portalTile.trySearchForExit(portalWorld, portalPos);
-             return false;
-         }
-+        // Luminol start - Add missing teleportation apis
-+        final org.bukkit.Location orginalPortalLocation = io.papermc.paper.util.MCUtil.toLocation(toTeleport.level(), portalPos);
-+        final org.bukkit.Location targetPortalLocation = io.papermc.paper.util.MCUtil.toLocation(portalWorld, teleportPos);
-+
-+        final me.earthme.luminol.api.portal.PortalLocateEvent portalLocateEvent = new me.earthme.luminol.api.portal.PortalLocateEvent(
-+                toTeleport.getBukkitEntity(),
-+                orginalPortalLocation,
-+                targetPortalLocation,
-+                portalWorld.getWorld(),
-+                org.bukkit.PortalType.END_GATEWAY,
-+                org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_GATEWAY
-+        );
-+
-+        portalLocateEvent.callEvent();
-+        // Luminol end
-+
- 
-         // note: we handle the position from the TeleportTransition
-         net.minecraft.world.level.portal.TeleportTransition teleport = net.minecraft.world.level.block.EndGatewayBlock.getTeleportTransition(
+
+                     // finished now, pass the location on
+                     spawnPosComplete.complete(
