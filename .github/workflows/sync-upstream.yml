@@ -108,6 +108,20 @@ jobs:
 
           git merge --no-edit --no-commit --no-ff "upstream/${SYNC_BRANCH}"
 
+          # Refuse to push a tree with unresolved merge conflicts. A broken
+          # upstream sync (e.g. conflicting .patch files) must fail loudly here
+          # instead of being committed and discovered later by the build job.
+          conflict_files="$(git diff --cached --name-only --diff-filter=U)"
+          if [ -n "${conflict_files}" ]; then
+            git merge --abort
+            {
+              echo "::error::Upstream sync produced merge conflicts in the following files; refusing to push a broken state:"
+              printf '::error:: %s\n' ${conflict_files}
+              echo "::error::Merge aborted. Resolve the conflicts manually and rerun this workflow."
+            }
+            exit 1
+          fi
+
           if git diff --cached --name-only -- .github/workflows | grep -q . && [ -z "${SYNC_TOKEN}" ]; then
             git merge --abort
             {
@@ -118,6 +132,15 @@ jobs:
           fi
 
           git commit --no-edit
+
+          # Belt-and-braces: never push a tree that still carries conflict markers,
+          # in case an upstream file contains literal `<<<<<<<`/`=======`/`>>>>>>>`
+          # sequences that git did not flag as unmerged.
+          if git diff --cached --name-only --diff-filter=U | grep -q .; then
+            echo "::error::Unexpected unresolved conflict after commit; aborting push."
+            exit 1
+          fi
+
           echo "synced_sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
           git push origin "HEAD:${SYNC_BRANCH}"
           echo "changed=true" >> "${GITHUB_OUTPUT}"
@@ -125,7 +148,7 @@ jobs:
   build-after-sync:
     name: Build Synced Commit
     needs: sync
-    if: needs.sync.outputs.changed == 'true' && ((github.event_name == 'workflow_dispatch' && inputs['run-build'] == 'true') || (github.event_name == 'schedule' && needs.sync.outputs.used_sync_token == 'false'))
+    if: needs.sync.outputs.changed == 'true' && ((github.event_name == 'workflow_dispatch' && inputs['run-build'] == 'true') || github.event_name == 'schedule')
     permissions: write-all
     uses: ./.github/workflows/build.yml
     with:
