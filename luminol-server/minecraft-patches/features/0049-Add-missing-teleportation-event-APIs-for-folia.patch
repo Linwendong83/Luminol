@@ -5,20 +5,20 @@ Subject: [PATCH] Add missing teleportation event APIs for folia
 
 
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index ba2f1b54ea80506f304a264d32c18e0fdc4f444f..a6a4c0f8abfb4c0c00f62a29aacf94172262a396 100644
+index 451974ccf2dea148d5465d7fbb0f702e5260fd07..db42de1e67dddc9dfdcfffed3e2c43ae29c4ffe5 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -1790,6 +1790,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1793,6 +1793,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
          ca.spottedleaf.concurrentutil.completable.CallbackCompletable<org.bukkit.Location> spawnPosComplete =
              new ca.spottedleaf.concurrentutil.completable.CallbackCompletable<>();
          boolean[] usedRespawnAnchor = new boolean[1];
 +        boolean[] postRespawnBedSpawn = new boolean[1];
 +        boolean[] postRespawnAnchorSpawn = new boolean[1];
 +        boolean[] postRespawnMissingBlock = new boolean[1];
-
+ 
          // set up post spawn location logic
          spawnPosComplete.addWaiter((spawnLoc, throwable) -> {
-@@ -1826,6 +1829,16 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1829,6 +1832,16 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
                      if (finalRespawnCompleteCallback != null) { // Luminol - Level hot unload apis
                          finalRespawnCompleteCallback.accept(ServerPlayer.this); // Luminol - Level hot unload apis
                      }
@@ -35,7 +35,7 @@ index ba2f1b54ea80506f304a264d32c18e0fdc4f444f..a6a4c0f8abfb4c0c00f62a29aacf9417
                  }
              );
          });
-@@ -1845,6 +1858,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1848,6 +1861,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
                          respawnWorld, respawnConfig, !alive
                      ).orElse(null);
                      if (spawnPos == null) {
@@ -43,12 +43,12 @@ index ba2f1b54ea80506f304a264d32c18e0fdc4f444f..a6a4c0f8abfb4c0c00f62a29aacf9417
                          // no spawn
                          ServerPlayer.this.connection.send(
                              new ClientboundGameEventPacket(ClientboundGameEventPacket.NO_RESPAWN_BLOCK_AVAILABLE, 0.0F)
-@@ -1860,6 +1874,8 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1863,6 +1877,8 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
                      boolean isRespawnAnchor = respawnWorld.getBlockState(respawnConfig.respawnData.pos()).is(net.minecraft.world.level.block.Blocks.RESPAWN_ANCHOR);
                      boolean isBed = respawnWorld.getBlockState(respawnConfig.respawnData.pos()).is(net.minecraft.tags.BlockTags.BEDS);
                      usedRespawnAnchor[0] = !alive && isRespawnAnchor;
 +                    postRespawnBedSpawn[0] = spawnPos.isBedSpawn();
 +                    postRespawnAnchorSpawn[0] = spawnPos.isAnchorSpawn();
-
+ 
                      // finished now, pass the location on
                      spawnPosComplete.complete(

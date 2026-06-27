@@ -250,7 +250,7 @@ index 832e04b97ffae60127537c0a8eb448af6602da1e..713e10027e105625eebe062ad6a9e3c3
          );
  
  
-@@ -216,6 +234,6 @@ public class TheEndGatewayBlockEntity extends TheEndPortalBlockEntity {
+@@ -216,7 +234,7 @@ public class TheEndGatewayBlockEntity extends TheEndPortalBlockEntity {
                  teleport, net.minecraft.world.entity.Entity.TELEPORT_FLAG_LOAD_CHUNK | net.minecraft.world.entity.Entity.TELEPORT_FLAG_TELEPORT_PASSENGERS,
                  (net.minecraft.world.entity.Entity teleportedEntity) -> {
                      // adjust to the final exit position
@@ -258,3 +258,4 @@ index 832e04b97ffae60127537c0a8eb448af6602da1e..713e10027e105625eebe062ad6a9e3c3
 +                    Vec3 adjusted = Vec3.atCenterOf(TheEndGatewayBlockEntity.findExitPosition(portalWorld, finalTeleportPos)); // Luminol - Add missing teleportation apis
                      // teleportTo will adjust rider positions
                      teleportedEntity.teleportTo(adjusted.x, adjusted.y, adjusted.z);
+ 
