@@ -153,4 +153,5 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       checkout-ref: ${{ needs.sync.outputs.synced_sha }}
+      source-branch: ${{ inputs.branch || 'ver/26.1.2' }}
     secrets: inherit

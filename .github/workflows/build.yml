@@ -13,6 +13,10 @@ on:
         description: "Git ref to check out before building"
         required: false
         default: ""
+      source-branch:
+        description: "Branch name to show in release notes and branch checks"
+        required: false
+        default: ""
       force-release:
         description: "Force disable release if you enter false, force release if you enter true, default release if not released else skip release"
         required: false
@@ -29,6 +33,11 @@ on:
     inputs:
       checkout-ref:
         description: "Git ref to check out before building"
+        required: false
+        default: ""
+        type: string
+      source-branch:
+        description: "Branch name to show in release notes and branch checks"
         required: false
         default: ""
         type: string
@@ -60,6 +69,7 @@ jobs:
       - name: Checkout Git Repository
         uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           ref: ${{ inputs['checkout-ref'] || github.ref }}
 
       - name: Set Up JDK
@@ -111,8 +121,11 @@ jobs:
 
       - name: Check If Branch In Expectations
         if: github.event_name != 'pull_request' && env.flag_release == 'true'
+        env:
+          SOURCE_REF_NAME: ${{ inputs['source-branch'] || github.ref_name }}
         run: |
-          if [[ "$GITHUB_REF_NAME" == ver/* ]] || [[ "$GITHUB_REF_NAME" == exp/* ]] || [[ "$GITHUB_REF_NAME" == dev/* ]]; then
+          ref_name="${SOURCE_REF_NAME:-$GITHUB_REF_NAME}"
+          if [[ "$ref_name" == ver/* ]] || [[ "$ref_name" == exp/* ]] || [[ "$ref_name" == dev/* ]]; then
             echo "Branch is in expected prefixes"
             echo "unexpect=false" >> $GITHUB_ENV
           else
@@ -128,53 +141,23 @@ jobs:
           PRIVATE_MAVEN_REPO_PASSWORD: ${{ secrets.PRIVATE_MAVEN_REPO_PASSWORD }}
           PRIVATE_MAVEN_REPO_USERNAME: ${{ secrets.PRIVATE_MAVEN_REPO_USERNAME }}
 
-      - name: Create Release - Pre Process
+      - name: Generate Release Notes
         if: ( github.event_name != 'pull_request' && !( env.unexpect == 'true' ) && env.flag_release == 'true' && env.release_exists != 'true' && !(inputs.force-release == 'false')) || inputs.force-release == 'true'
-        run: |
-          if [ "${{ inputs.comments }}" == "" ]; then
-            echo "No comments provided"
-            echo "flag_comment=false" >> $GITHUB_ENV
-          else
-            echo "Comments provided: ${{ inputs.comments }}"
-            echo "flag_comment=true" >> $GITHUB_ENV
-          fi
+        run: bash scripts/generate_release_notes.sh
+        env:
+          RELEASE_COMMENTS: ${{ inputs.comments }}
+          SOURCE_REF_NAME: ${{ inputs['source-branch'] || github.ref_name }}
+          UPSTREAM_REPOSITORY: LuminolMC/Luminol
 
-      - name: Create Release - No Comment
-        if: env.flag_comment == 'false'
+      - name: Create Release
+        if: ( github.event_name != 'pull_request' && !( env.unexpect == 'true' ) && env.flag_release == 'true' && env.release_exists != 'true' && !(inputs.force-release == 'false')) || inputs.force-release == 'true'
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ env.tag }}
           name: ${{ env.project_id_b }} ${{ env.mcversion }} - ${{ env.commit_id }}${{ env.release_count }}
-          body: |
-            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/${{ github.repository }}/${{ env.tag }}/total?color=red&style=flat-square)](https://github.com/${{ github.repository }}/releases/download/${{ env.tag }}/${{ env.jar }})
-            This release is automatically compiled by GitHub Actions
-            ### Branch Info
-            > ${{ github.ref_name }}
-            ### Commit Message
-            ${{ env.commit_msg }}
+          bodyFile: ${{ env.release_body_file }}
           artifacts: ${{ env.jar_dir }}
-          generateReleaseNotes: true
-          prerelease: ${{ env.pre }}
-          makeLatest: ${{ env.make_latest }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create Release - With Comment
-        if: env.flag_comment == 'true'
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ env.tag }}
-          name: ${{ env.project_id_b }} ${{ env.mcversion }} - ${{ env.commit_id }}${{ env.release_count }}
-          body: |
-            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/${{ github.repository }}/${{ env.tag }}/total?color=red&style=flat-square)](https://github.com/${{ github.repository }}/releases/download/${{ env.tag }}/${{ env.jar }})
-            This release is automatically compiled by GitHub Actions
-            ### Comments
-            > ${{ inputs.comments }}
-            ### Branch Info
-            > ${{ github.ref_name }}
-            ### Commit Message
-            ${{ env.commit_msg }}
-          artifacts: ${{ env.jar_dir }}
-          generateReleaseNotes: true
+          generateReleaseNotes: false
           prerelease: ${{ env.pre }}
           makeLatest: ${{ env.make_latest }}
           token: ${{ secrets.GITHUB_TOKEN }}
