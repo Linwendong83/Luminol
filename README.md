@@ -1,5 +1,5 @@
 > [!NOTE]
-> 当前 fork 的修改聚焦于补全 Folia 传送和重生流程中的事件 API：为实体传送门前后事件、PortalLocateEvent 和玩家重生后事件补充位置、传送原因、传送门类型等上下文，并允许 PortalLocateEvent 在同一目标世界内调整目的地。
+> 当前 fork 的修改聚焦于补全 Folia 传送和重生流程中的事件 API：为实体传送门前后事件和玩家重生后事件补充位置、传送原因、传送门类型等上下文。
 
 <div align="center">
   <img src="./public/image/Luminol_5.png" alt="Luminol Logo" width="300">
