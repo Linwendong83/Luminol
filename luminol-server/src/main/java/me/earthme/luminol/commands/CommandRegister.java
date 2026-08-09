@@ -1,6 +1,7 @@
 package me.earthme.luminol.commands;
 
 import me.earthme.luminol.commands.bar.BarCommand;
+import me.earthme.luminol.commands.memoryleak.MemoryLeakCommand;
 
 public class CommandRegister {
     /**
@@ -10,5 +11,6 @@ public class CommandRegister {
      */
     public static void register() {
         new BarCommand().register();
+        new MemoryLeakCommand().register();
     }
 }
