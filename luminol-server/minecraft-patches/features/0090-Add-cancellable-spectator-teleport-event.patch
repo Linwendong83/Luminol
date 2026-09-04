@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=9E=97=E6=96=87=E4=B8=9C?= <545558538@qq.com>
+Date: Fri, 4 Sep 2026 23:43:54 +0800
+Subject: [PATCH] Add cancellable spectator teleport event
+
+
+diff --git a/io/papermc/paper/threadedregions/TeleportUtils.java b/io/papermc/paper/threadedregions/TeleportUtils.java
+index 8f7c514693e0fe360b0a5a1ca93c1a9f161c8826..effc2cb7de25db0ec96039a36d7c5384a787f98c 100644
+--- a/io/papermc/paper/threadedregions/TeleportUtils.java
++++ b/io/papermc/paper/threadedregions/TeleportUtils.java
+@@ -40,6 +40,19 @@ public final class TeleportUtils {
+                             }
+                             return;
+                         }
++                        if (cause == PlayerTeleportEvent.TeleportCause.SPECTATE
++                                && realFrom instanceof net.minecraft.server.level.ServerPlayer serverPlayer
++                                && serverPlayer.isSpectator()) {
++                            me.earthme.luminol.api.entity.player.PlayerSpectateTeleportEvent event =
++                                    new me.earthme.luminol.api.entity.player.PlayerSpectateTeleportEvent(
++                                            serverPlayer.getBukkitEntity(), to.getBukkitEntity(), loc);
++                            if (!event.callEvent()) {
++                                if (onComplete != null) {
++                                    onComplete.accept(null);
++                                }
++                                return;
++                            }
++                        }
+                         (useFromRootVehicle ? realFrom.getRootVehicle() : realFrom).teleportAsync(
+                             ((CraftWorld)loc.getWorld()).getHandle(), pos, yaw, pitch, null,
+                             cause, teleportFlags, onComplete
