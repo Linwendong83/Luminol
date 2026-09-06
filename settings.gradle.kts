@@ -10,7 +10,16 @@ pluginManagement {
 
     plugins {
         id("moe.luminolmc.hyacinthusweight.patcher") version weightVersion
-        id("moe.luminolmc.hyacinthusweight.core") version weightVersion
+        // The patcher module also supplies core on the subprojects' classpath.
+    }
+
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "moe.luminolmc.hyacinthusweight.patcher") {
+                // Requests without an explicit version do not expose the plugin default here.
+                useModule("moe.luminolmc.hyacinthusweight:hyacinthusweight-core:${requested.version ?: weightVersion}")
+            }
+        }
     }
 }
 
