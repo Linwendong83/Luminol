@@ -1,0 +1,79 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: sync-upstream-ver-26.2-hardfork
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      UPSTREAM_REPOSITORY: LophineLabs/Lophine
+      UPSTREAM_BRANCH: ver/26.2-hardfork
+      TARGET_BRANCH: ver/26.2-hardfork
+
+    steps:
+      - name: Check For Upstream Updates
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          UPSTREAM_SHA=$(git ls-remote "https://github.com/${UPSTREAM_REPOSITORY}.git" "refs/heads/${UPSTREAM_BRANCH}" | cut -f1)
+          TARGET_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${TARGET_BRANCH}" --jq '.object.sha')
+
+          echo "Upstream: ${UPSTREAM_SHA}"
+          echo "Fork:     ${TARGET_SHA}"
+
+          if [ -z "${UPSTREAM_SHA}" ]; then
+            echo "Could not resolve upstream branch."
+            exit 1
+          fi
+
+          if [ "${UPSTREAM_SHA}" = "${TARGET_SHA}" ]; then
+            echo "update=false" >> "$GITHUB_OUTPUT"
+            echo "Already up to date."
+          else
+            echo "update=true" >> "$GITHUB_OUTPUT"
+            echo "Upstream update detected."
+          fi
+
+      - name: Checkout Target Branch
+        if: steps.check.outputs.update == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Merge Upstream
+        if: steps.check.outputs.update == 'true'
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream "https://github.com/${UPSTREAM_REPOSITORY}.git"
+          git fetch --no-tags upstream "${UPSTREAM_BRANCH}"
+          git merge --no-edit "upstream/${UPSTREAM_BRANCH}"
+          git push origin "HEAD:${TARGET_BRANCH}"
+
+      - name: Trigger Build
+        if: steps.check.outputs.update == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sleep 5
+          gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref "$TARGET_BRANCH"
