@@ -31,19 +31,17 @@ jobs:
           set -euo pipefail
 
           UPSTREAM_SHA=$(git ls-remote "https://github.com/${UPSTREAM_REPOSITORY}.git" "refs/heads/${UPSTREAM_BRANCH}" | cut -f1)
-          TARGET_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${TARGET_BRANCH}" --jq '.object.sha')
 
           echo "Upstream: ${UPSTREAM_SHA}"
-          echo "Fork:     ${TARGET_SHA}"
 
           if [ -z "${UPSTREAM_SHA}" ]; then
             echo "Could not resolve upstream branch."
             exit 1
           fi
 
-          if [ "${UPSTREAM_SHA}" = "${TARGET_SHA}" ]; then
+          if gh api "repos/${GITHUB_REPOSITORY}/commits/${UPSTREAM_SHA}" --silent >/dev/null 2>&1; then
             echo "update=false" >> "$GITHUB_OUTPUT"
-            echo "Already up to date."
+            echo "Upstream commit already exists in this fork."
           else
             echo "update=true" >> "$GITHUB_OUTPUT"
             echo "Upstream update detected."
@@ -58,6 +56,7 @@ jobs:
           token: ${{ github.token }}
 
       - name: Merge Upstream
+        id: merge
         if: steps.check.outputs.update == 'true'
         run: |
           set -euo pipefail
@@ -65,13 +64,24 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          BEFORE_SHA=$(git rev-parse HEAD)
+
           git remote add upstream "https://github.com/${UPSTREAM_REPOSITORY}.git"
           git fetch --no-tags upstream "${UPSTREAM_BRANCH}"
           git merge --no-edit "upstream/${UPSTREAM_BRANCH}"
+
+          AFTER_SHA=$(git rev-parse HEAD)
+          if [ "${BEFORE_SHA}" = "${AFTER_SHA}" ]; then
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            echo "Already up to date after fetching upstream."
+            exit 0
+          fi
+
+          echo "merged=true" >> "$GITHUB_OUTPUT"
           git push origin "HEAD:${TARGET_BRANCH}"
 
       - name: Trigger Build
-        if: steps.check.outputs.update == 'true'
+        if: steps.merge.outputs.merged == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
