@@ -93,15 +93,17 @@ jobs:
       - name: Build All
         run: chmod 755 ./scripts/setup_and_build.sh && ./scripts/setup_and_build.sh
 
+      - name: Set Environment
+        if: github.event_name != 'pull_request'
+        run: sh scripts/SetENV.sh
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.project_id_b }} CI Artifacts
-          path: luminol-server/build/libs/*-paperclip-*.jar
-
-      - name: Set Environment
-        if: github.event_name != 'pull_request'
-        run: sh scripts/SetENV.sh
+          path: |
+            luminol-server/build/libs/*-paperclip-*.jar
+            luminol-server/build/libs/*-paperclip.jar
 
       - name: Check If Release Exists
         if: github.event_name != 'pull_request' && env.flag_release == 'true'
