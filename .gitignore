@@ -15,3 +15,8 @@ build
 /paper-api
 
 .idea/
+/luminol-server/src/minecraft
+/folia-api
+/folia-server
+/luminol-generator.settings.gradle.kts
+/test-plugin.settings.gradle.kts
