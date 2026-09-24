@@ -258,7 +258,7 @@ index 88ccf32b3c1b3506fb76be5ae520168b6b167aa3..8bc18bf35537d5bbf2dacef34886b9a9
          Map<ResourceKey<Level>, ServerLevel> newLevels = Maps.newLinkedHashMap(oldLevels);
          newLevels.remove(level.dimension());
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 1eddf666463da5331d8a6c177291fb0c7833160d..d97909e0d21e1c71ea445fa07a342efbf0f4a5c2 100644
+index e4ed9343144dc9d130a7bfb8461e177b5c86f1eb..1013859d148bd376ef530e8275e08bcf7cbdfb23 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -221,6 +221,12 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
@@ -429,7 +429,7 @@ index 9fad06eda81b4c2c1889a9cfa7a6948e7ee01862..854f8954ccfd8c34c9f9c91fd1805260
          private final Vec2 spawnAngle;
  
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 78dc41b87bc50c7df679354c32b07e3cdad00890..d25d80ccf30460f6cb207bc16d2ab92b68e606ba 100644
+index e40c898a0cb9e5b7539c7634e3ad98ade0661580..6ff4145620a7d5188794664c24437a3abf376216 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
 @@ -394,6 +394,9 @@ public abstract class Entity
@@ -442,7 +442,7 @@ index 78dc41b87bc50c7df679354c32b07e3cdad00890..d25d80ccf30460f6cb207bc16d2ab92b
      // CraftBukkit end
  
      // Paper start
-@@ -4541,6 +4544,17 @@ public abstract class Entity
+@@ -4542,6 +4545,17 @@ public abstract class Entity
              }
          }
  
@@ -460,7 +460,7 @@ index 78dc41b87bc50c7df679354c32b07e3cdad00890..d25d80ccf30460f6cb207bc16d2ab92b
          // TODO any events that can modify go HERE
  
          // check for same region
-@@ -4559,6 +4573,14 @@ public abstract class Entity
+@@ -4560,6 +4574,14 @@ public abstract class Entity
              }
  
              for (EntityTreeNode entity : passengerTree.getFullTree()) {
@@ -475,7 +475,7 @@ index 78dc41b87bc50c7df679354c32b07e3cdad00890..d25d80ccf30460f6cb207bc16d2ab92b
                  entity.root.teleportSyncSameRegion(pos, yaw, pitch, velocity);
              }
  
-@@ -4574,8 +4596,8 @@ public abstract class Entity
+@@ -4575,8 +4597,8 @@ public abstract class Entity
                  // performs add/remove from world logic which will also perform add/remove tracker logic
              }
  
@@ -486,7 +486,7 @@ index 78dc41b87bc50c7df679354c32b07e3cdad00890..d25d80ccf30460f6cb207bc16d2ab92b
              }
              return true;
          }
-@@ -4592,7 +4614,7 @@ public abstract class Entity
+@@ -4593,7 +4615,7 @@ public abstract class Entity
              node.root = node.root.transformForAsyncTeleport(destination, pos, yaw, pitch, velocity);
          }
  
@@ -495,7 +495,7 @@ index 78dc41b87bc50c7df679354c32b07e3cdad00890..d25d80ccf30460f6cb207bc16d2ab92b
  
          return true;
      }
-@@ -4872,6 +4894,13 @@ public abstract class Entity
+@@ -4873,6 +4895,13 @@ public abstract class Entity
              ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkX(initialPosition),
              ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkZ(initialPosition)
          );
@@ -509,7 +509,7 @@ index 78dc41b87bc50c7df679354c32b07e3cdad00890..d25d80ccf30460f6cb207bc16d2ab92b
  
          // first, remove entity/passengers from world
          EntityTreeNode passengerTree = this.detachPassengers();
-@@ -4929,6 +4958,10 @@ public abstract class Entity
+@@ -4930,6 +4959,10 @@ public abstract class Entity
                      if (info.postTeleportTransition() != null) {
                          info.postTeleportTransition().onTransition(teleported);
                      }

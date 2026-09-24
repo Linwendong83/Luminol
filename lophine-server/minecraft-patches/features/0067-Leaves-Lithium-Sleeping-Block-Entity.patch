@@ -240,7 +240,7 @@ index 6e08d50794c4af4405f3e164a3fd46f376b3f78f..dd2d0940eece3e85078e574f66f71a4c
  
      int getContainerSize();
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index ff2e55a19d2ce62b7d4577083eb2830d94d6bca8..f47470d6091d62b18ed3f7eca113b76376a80b99 100644
+index 7cc9f53ebeae4121186d5827b9afad7da400e5bd..de53c08758a533035ca1ba55f446bae7b1d35197 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
 @@ -324,7 +324,7 @@ public abstract class Entity
@@ -252,7 +252,7 @@ index ff2e55a19d2ce62b7d4577083eb2830d94d6bca8..f47470d6091d62b18ed3f7eca113b763
      private final VecDeltaCodec packetPositionCodec = new VecDeltaCodec();
      public boolean needsSync;
      public boolean syncPosition;
-@@ -4474,11 +4474,13 @@ public abstract class Entity
+@@ -4475,11 +4475,13 @@ public abstract class Entity
      }
  
      protected Entity transformForAsyncTeleport(ServerLevel destination, Vec3 pos, Float yaw, Float pitch, Vec3 velocity) {
@@ -266,7 +266,7 @@ index ff2e55a19d2ce62b7d4577083eb2830d94d6bca8..f47470d6091d62b18ed3f7eca113b763
          if (copy instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon dragon) dragon.syncDragonPartsAfterTeleportTransform(); // Luminol - Sync dragon part when teleportation or firstly created
          // vanilla code used to call remove _after_ copying, and some stuff is required to be after copy - so add hook here
          // for example, clearing of inventory after switching dimensions
-@@ -6180,8 +6182,29 @@ public abstract class Entity
+@@ -6181,8 +6183,29 @@ public abstract class Entity
              this.setBoundingBox(this.makeBoundingBox());
          }
          // Paper end - Block invalid positions and bounding box
