@@ -68,7 +68,21 @@ jobs:
 
           git remote add upstream "https://github.com/${UPSTREAM_REPOSITORY}.git"
           git fetch --no-tags upstream "${UPSTREAM_BRANCH}"
-          git merge --no-edit "upstream/${UPSTREAM_BRANCH}"
+
+          # auto-update-upstream.yml is intentionally absent from this fork, but
+          # upstream keeps modifying it: resolve that modify/delete conflict by
+          # deleting it again; any other conflict must fail loudly.
+          if ! git merge --no-edit "upstream/${UPSTREAM_BRANCH}"; then
+            CONFLICTS=$(git diff --name-only --diff-filter=U)
+            if [ "${CONFLICTS}" = ".github/workflows/auto-update-upstream.yml" ]; then
+              git rm -f .github/workflows/auto-update-upstream.yml
+              git commit --no-edit
+            else
+              echo "Unexpected merge conflicts:"
+              echo "${CONFLICTS}"
+              exit 1
+            fi
+          fi
 
           AFTER_SHA=$(git rev-parse HEAD)
           if [ "${BEFORE_SHA}" = "${AFTER_SHA}" ]; then
