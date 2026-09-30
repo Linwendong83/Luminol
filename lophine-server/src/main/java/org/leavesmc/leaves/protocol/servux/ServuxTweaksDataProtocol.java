@@ -19,7 +19,6 @@ package org.leavesmc.leaves.protocol.servux;
 
 import ca.spottedleaf.moonrise.common.util.TickThread;
 import fun.bm.lophine.config.modules.function.protocol.ServuxProtocolConfig;
-import io.netty.buffer.Unpooled;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -45,7 +44,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Servux 26.2 tweaks_data support used by Tweakeroo inventory previews. */
+/**
+ * Servux 26.2 tweaks_data support used by Tweakeroo inventory previews.
+ */
 @LeavesProtocol.Register(namespace = "servux")
 public class ServuxTweaksDataProtocol implements LeavesProtocol {
     public static final int PROTOCOL_VERSION = 2;
@@ -221,7 +222,8 @@ public class ServuxTweaksDataProtocol implements LeavesProtocol {
                         }
                         case PACKET_C2S_UNREGISTER_REPLY -> ServuxDataByteBuf.skip(buf);
                         case PACKET_C2S_NBT_RESPONSE_START,
-                             PACKET_S2C_NBT_RESPONSE_START -> payload.nbt = ServuxDataByteBuf.read(buf, 16L * 1024 * 1024);
+                             PACKET_S2C_NBT_RESPONSE_START ->
+                                payload.nbt = ServuxDataByteBuf.read(buf, 16L * 1024 * 1024);
                         case PACKET_C2S_NBT_RESPONSE_DATA, PACKET_S2C_NBT_RESPONSE_DATA ->
                                 payload.buffer = new FriendlyByteBuf(buf.readBytes(buf.readableBytes()));
                         case PACKET_C2S_METADATA_REQUEST, PACKET_S2C_METADATA -> {
@@ -237,7 +239,8 @@ public class ServuxTweaksDataProtocol implements LeavesProtocol {
         private int entityId = -1;
         private BlockPos pos = BlockPos.ZERO;
         private CompoundTag nbt = new CompoundTag();
-        @Nullable private FriendlyByteBuf buffer;
+        @Nullable
+        private FriendlyByteBuf buffer;
 
         private TweaksDataPayload(TweaksDataPayloadType type) {
             this.packetType = type;

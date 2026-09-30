@@ -16,7 +16,9 @@ import org.leavesmc.leaves.protocol.jade.JadeProtocol;
 import org.leavesmc.leaves.protocol.jade.accessor.EntityAccessor;
 import org.leavesmc.leaves.protocol.jade.provider.StreamServerDataProvider;
 
-/** Sends the absorption amount that Jade uses when drawing entity health. */
+/**
+ * Sends the absorption amount that Jade uses when drawing entity health.
+ */
 public enum EntityHealthAndArmorProvider implements StreamServerDataProvider<EntityAccessor, Float> {
     INSTANCE;
 

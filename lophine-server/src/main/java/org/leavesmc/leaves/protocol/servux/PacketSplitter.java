@@ -29,7 +29,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/** Splits large Servux NBT payloads and bounds the lifetime and size of reassembled client data. */
+/**
+ * Splits large Servux NBT payloads and bounds the lifetime and size of reassembled client data.
+ */
 public class PacketSplitter {
     private static final Logger LOGGER = LogUtils.getClassLogger();
     private static final long STALE_TIMEOUT_MS = 10_000;

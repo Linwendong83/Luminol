@@ -394,7 +394,8 @@ public class ServuxLitematicsProtocol implements LeavesProtocol {
                         }
                         case PACKET_C2S_UNREGISTER_REPLY -> ServuxDataByteBuf.write(buf, payload.nbt);
                         case PACKET_C2S_TASK_REQUEST, PACKET_S2C_TASK_RESPONSE,
-                             PACKET_S2C_TASK_STATUS_SYNC, PACKET_C2S_TASK_CANCEL -> ServuxDataByteBuf.write(buf, payload.nbt);
+                             PACKET_S2C_TASK_STATUS_SYNC, PACKET_C2S_TASK_CANCEL ->
+                                ServuxDataByteBuf.write(buf, payload.nbt);
                         case PACKET_S2C_NBT_RESPONSE_DATA, PACKET_C2S_NBT_RESPONSE_DATA ->
                                 buf.writeBytes(payload.buffer.readBytes(payload.buffer.readableBytes()));
                         case PACKET_C2S_METADATA_REQUEST, PACKET_S2C_METADATA -> buf.writeNbt(payload.nbt);
