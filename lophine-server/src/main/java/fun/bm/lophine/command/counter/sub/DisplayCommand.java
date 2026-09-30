@@ -7,8 +7,6 @@ import fun.bm.lophine.command.counter.CounterSubCommand;
 import fun.bm.lophine.utils.ServerI18nUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.DyeColor;
 import org.bukkit.entity.Entity;

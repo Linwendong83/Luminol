@@ -16,7 +16,9 @@ import org.leavesmc.leaves.protocol.jade.JadeProtocol;
 import org.leavesmc.leaves.protocol.jade.accessor.EntityAccessor;
 import org.leavesmc.leaves.protocol.jade.provider.StreamServerDataProvider;
 
-/** Sends the presence marker Jade expects for a waxed Copper Golem. */
+/**
+ * Sends the presence marker Jade expects for a waxed Copper Golem.
+ */
 public enum WaxedCopperGolemProvider implements StreamServerDataProvider<EntityAccessor, Unit> {
     INSTANCE;
 

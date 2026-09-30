@@ -158,8 +158,8 @@ public class LitematicaEasyPlaceProtocol {
 
         if (state.hasProperty(BlockStateProperties.WATERLOGGED)
                 && ((oldState.hasProperty(BlockStateProperties.WATERLOGGED)
-                        && oldState.getValue(BlockStateProperties.WATERLOGGED))
-                        || oldState.getFluidState().getType().isSame(Fluids.WATER))) {
+                && oldState.getValue(BlockStateProperties.WATERLOGGED))
+                || oldState.getFluidState().getType().isSame(Fluids.WATER))) {
             state = state.setValue(BlockStateProperties.WATERLOGGED, true);
         }
 

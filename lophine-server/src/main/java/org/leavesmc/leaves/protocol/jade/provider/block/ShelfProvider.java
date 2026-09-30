@@ -18,7 +18,9 @@ import org.leavesmc.leaves.protocol.jade.accessor.BlockAccessor;
 import org.leavesmc.leaves.protocol.jade.provider.ItemStorageProvider;
 import org.leavesmc.leaves.protocol.jade.provider.StreamServerDataProvider;
 
-/** Supplies the item in the shelf slot the player is looking at. */
+/**
+ * Supplies the item in the shelf slot the player is looking at.
+ */
 public enum ShelfProvider implements StreamServerDataProvider<BlockAccessor, ItemStack> {
     INSTANCE;
 

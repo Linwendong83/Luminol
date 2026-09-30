@@ -33,7 +33,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.Filterable;
 import net.minecraft.world.item.DyeColor;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.WrittenBookContent;
@@ -45,16 +44,11 @@ import net.minecraft.world.level.block.entity.BannerPattern;
 import net.minecraft.world.level.block.entity.BannerPatternLayers;
 import org.leavesmc.leaves.protocol.rei.ingredient.EntryIngredient;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
-/** Builds the three server-side recipe fillers registered by REI's 26.2 default plugin. */
+/**
+ * Builds the three server-side recipe fillers registered by REI's 26.2 default plugin.
+ */
 public final class BuiltinCraftingRecipeDisplays {
     private static final String[] BOOK_TITLES = {
             "Adventurer's Dreams", "Adventurer's Diary", "The Lost Journal", "The Lost Diary", "The Lost Book",
