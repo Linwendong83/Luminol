@@ -1,5 +1,8 @@
 package fun.bm.lophine.protocol;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
 import fun.bm.lophine.config.modules.function.protocol.RecipeSyncProtocolConfig;
 import io.netty.buffer.ByteBufUtil;
@@ -9,6 +12,7 @@ import io.netty.handler.codec.DecoderException;
 import io.netty.util.AttributeKey;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.game.ClientboundUpdateRecipesPacket;
@@ -24,6 +28,8 @@ import org.leavesmc.leaves.protocol.core.*;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -37,6 +43,8 @@ public final class RecipeSyncProtocol implements LeavesProtocol {
     private static final int MAX_PAYLOAD_SIZE = 1024 * 1024;
     private static final int MAX_CONFIGURATION_PAYLOAD_SIZE = 32767;
     private static final int MAX_SUPPORTED_SERIALIZERS = 256;
+    private static final int MAX_VIAVERSION_DETAILS_SIZE = 4096;
+    private static final int MAX_PROTOCOL_VERSION = 100_000;
     private static final int MAX_CACHED_FABRIC_VARIANTS = 16;
     private static final Identifier FABRIC_RECIPE_SYNC = Identifier.fromNamespaceAndPath("fabric", "recipe_sync");
     private static final Identifier NEOFORGE_RECIPE_CONTENT = Identifier.fromNamespaceAndPath("neoforge", "recipe_content");
@@ -64,6 +72,8 @@ public final class RecipeSyncProtocol implements LeavesProtocol {
             AttributeKey.valueOf("lophine:recipe_sync_neoforge_generation");
     private static final AttributeKey<Boolean> VERSION_WARNING_SENT =
             AttributeKey.valueOf("lophine:recipe_sync_version_warning");
+    private static final AttributeKey<Integer> PROXY_CLIENT_PROTOCOL =
+            AttributeKey.valueOf("lophine:recipe_sync_proxy_client_protocol");
     private static final Set<UUID> PENDING_SYNCS = ConcurrentHashMap.newKeySet();
     private static final AtomicLong GENERATION = new AtomicLong();
     private static final AtomicBoolean SYNC_ALL_WHEN_READY = new AtomicBoolean();
@@ -124,6 +134,17 @@ public final class RecipeSyncProtocol implements LeavesProtocol {
     @ProtocolHandler.MinecraftRegister(key = "neoforge:recipe_content")
     public static void handleNeoForgeChannel(Context context, Identifier ignored) {
         markChannelAvailable(context, NEOFORGE_CHANNEL_AVAILABLE);
+    }
+
+    @ProtocolHandler.BytebufReceiver(key = "vv:proxy_details")
+    public static void handleViaVersionProxyDetails(ServerPlayer player, FriendlyByteBuf payload) {
+        Channel channel = channel(player);
+        if (channel == null) {
+            return;
+        }
+
+        channel.attr(PROXY_CLIENT_PROTOCOL).set(readProxyClientProtocol(payload));
+        queueSync(player.getUUID());
     }
 
     @ProtocolHandler.PlayerRecipeSync
@@ -366,11 +387,43 @@ public final class RecipeSyncProtocol implements LeavesProtocol {
         Channel channel = channel(player);
         if (channel != null && channel.attr(VERSION_WARNING_SENT).compareAndSet(null, true)) {
             LOGGER.warn(
-                    "Not synchronizing recipes to {} because the client protocol does not match the server protocol",
+                    "Not synchronizing recipes to {} because the client protocol could not be confirmed to match the server protocol",
                     player.getScoreboardName()
             );
         }
         return false;
+    }
+
+    private static int readProxyClientProtocol(FriendlyByteBuf payload) {
+        int length = payload.readableBytes();
+        if (length <= 0 || length > MAX_VIAVERSION_DETAILS_SIZE) {
+            return -1;
+        }
+
+        byte[] data = new byte[length];
+        payload.getBytes(payload.readerIndex(), data);
+        try {
+            JsonElement element = JsonParser.parseString(new String(data, StandardCharsets.UTF_8));
+            if (!element.isJsonObject()) {
+                return -1;
+            }
+
+            JsonObject details = element.getAsJsonObject();
+            JsonElement specification = details.get("specVersion");
+            if (specification != null && specification.getAsInt() != 1) {
+                return -1;
+            }
+
+            JsonElement version = details.get("version");
+            if (version == null || !version.isJsonPrimitive() || !version.getAsJsonPrimitive().isNumber()) {
+                return -1;
+            }
+
+            int protocol = new BigDecimal(version.getAsString()).intValueExact();
+            return protocol >= 0 && protocol <= MAX_PROTOCOL_VERSION ? protocol : -1;
+        } catch (RuntimeException exception) {
+            return -1;
+        }
     }
 
     private static Channel channel(ServerPlayer player) {
@@ -716,7 +769,12 @@ public final class RecipeSyncProtocol implements LeavesProtocol {
         private static boolean isNativeProtocol(ServerPlayer player) {
             Plugin plugin = Bukkit.getPluginManager().getPlugin("ViaVersion");
             if (plugin == null || !plugin.isEnabled()) {
-                return true;
+                Channel channel = channel(player);
+                if (channel == null) {
+                    return false;
+                }
+                Integer proxyProtocol = channel.attr(PROXY_CLIENT_PROTOCOL).get();
+                return proxyProtocol == null || proxyProtocol == SharedConstants.getProtocolVersion();
             }
 
             try {
