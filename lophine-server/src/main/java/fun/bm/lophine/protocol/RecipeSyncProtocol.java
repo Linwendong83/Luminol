@@ -138,6 +138,15 @@ public final class RecipeSyncProtocol implements LeavesProtocol {
 
     @ProtocolHandler.BytebufReceiver(key = "vv:proxy_details")
     public static void handleViaVersionProxyDetails(ServerPlayer player, FriendlyByteBuf payload) {
+        handleClientProtocolDetails(player, payload);
+    }
+
+    @ProtocolHandler.BytebufReceiver(key = "vv:mod_details")
+    public static void handleViaFabricModDetails(ServerPlayer player, FriendlyByteBuf payload) {
+        handleClientProtocolDetails(player, payload);
+    }
+
+    private static void handleClientProtocolDetails(ServerPlayer player, FriendlyByteBuf payload) {
         Channel channel = channel(player);
         if (channel == null) {
             return;
@@ -767,14 +776,21 @@ public final class RecipeSyncProtocol implements LeavesProtocol {
         }
 
         private static boolean isNativeProtocol(ServerPlayer player) {
+            Channel channel = channel(player);
+            if (channel == null) {
+                return false;
+            }
+
+            Integer proxyProtocol = channel.attr(PROXY_CLIENT_PROTOCOL).get();
+            if (proxyProtocol != null) {
+                return proxyProtocol == SharedConstants.getProtocolVersion();
+            }
+
             Plugin plugin = Bukkit.getPluginManager().getPlugin("ViaVersion");
             if (plugin == null || !plugin.isEnabled()) {
-                Channel channel = channel(player);
-                if (channel == null) {
-                    return false;
-                }
-                Integer proxyProtocol = channel.attr(PROXY_CLIENT_PROTOCOL).get();
-                return proxyProtocol == null || proxyProtocol == SharedConstants.getProtocolVersion();
+                // A translated client can present the server protocol in its handshake while
+                // retaining older registry IDs inside custom recipe payloads. Unknown is unsafe.
+                return false;
             }
 
             try {
