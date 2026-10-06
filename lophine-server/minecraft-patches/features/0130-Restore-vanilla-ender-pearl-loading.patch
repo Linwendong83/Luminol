@@ -5,7 +5,7 @@ Subject: [PATCH] Restore vanilla ender pearl loading
 
 
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 27a6970fe699b9346b7ca69e1cfa04833a1c0b57..28ce624e9952e9d45930d4550ef80d1e788f5916 100644
+index 27a6970fe699b9346b7ca69e1cfa04833a1c0b57..0568078f44c56a33a759a4d2a0a71524a4715e81 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
 @@ -277,7 +277,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
@@ -17,18 +17,30 @@ index 27a6970fe699b9346b7ca69e1cfa04833a1c0b57..28ce624e9952e9d45930d4550ef80d1e
      private long timeEntitySatOnShoulder;
      private CompoundTag shoulderEntityLeft = new CompoundTag();
      private CompoundTag shoulderEntityRight = new CompoundTag();
-@@ -785,16 +785,17 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -785,23 +785,47 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
  
      private void saveEnderPearls(final ValueOutput playerOutput) {
          if (!this.enderPearls.isEmpty()) {
 -            ValueOutput.ValueOutputList pearlsOutput = playerOutput.childrenList("ender_pearls");
 -
+-            for (ThrownEnderpearl enderPearl : this.enderPearls) {
+-                if (enderPearl.level().paperConfig().misc.legacyEnderPearlBehavior) continue; // Paper - Allow using old ender pearl behavior
 +            // Lophine start - restore vanilla ender pearl loading on Folia
 +            ValueOutput.TypedOutputList<CompoundTag> pearlsOutput = null;
-             for (ThrownEnderpearl enderPearl : this.enderPearls) {
--                if (enderPearl.level().paperConfig().misc.legacyEnderPearlBehavior) continue; // Paper - Allow using old ender pearl behavior
--                if (enderPearl.isRemoved()) {
++            java.util.Set<java.util.UUID> savedUuids = new java.util.HashSet<>();
++            java.util.Iterator<ThrownEnderpearl> iterator = this.enderPearls.iterator();
++            while (iterator.hasNext()) {
++                ThrownEnderpearl enderPearl = iterator.next();
+                 if (enderPearl.isRemoved()) {
 -                    LOGGER.warn("Trying to save removed ender pearl, skipping");
++                    iterator.remove();
++                    continue;
++                }
++                if (!savedUuids.add(enderPearl.getUUID())) {
++                    LOGGER.warn("Trying to save duplicate ender pearl ({}) for player {}, skipping", enderPearl.getUUID(), this.getScoreboardName());
++                    iterator.remove();
++                    continue;
++                }
 +                CompoundTag pearlTag = enderPearl.getLastSavedEnderPearlTag();
 +                if (pearlTag == null) {
 +                    LOGGER.warn("Trying to save ender pearl without a region-owned snapshot, skipping");
@@ -42,16 +54,85 @@ index 27a6970fe699b9346b7ca69e1cfa04833a1c0b57..28ce624e9952e9d45930d4550ef80d1e
 +                    pearlsOutput.add(pearlTag);
                  }
              }
-         }
-@@ -1185,6 +1186,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
-                         );
-                 }
-             }
 +            // Lophine end - restore vanilla ender pearl loading on Folia
          }
      }
  
-@@ -3547,11 +3549,11 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+     public void loadAndSpawnEnderPearls(final ValueInput playerInput) {
+-        playerInput.childrenListOrEmpty("ender_pearls").forEach(this::loadAndSpawnEnderPearl);
++        // Lophine start - restore vanilla ender pearl loading on Folia
++        java.util.Set<java.util.UUID> seenUuids = new java.util.HashSet<>();
++        playerInput.childrenListOrEmpty("ender_pearls").forEach((pearlInput) -> {
++            java.util.Optional<java.util.UUID> uuid = pearlInput.read("UUID", net.minecraft.core.UUIDUtil.CODEC);
++            if (uuid.isPresent() && !seenUuids.add(uuid.get())) {
++                LOGGER.warn("Encountered duplicate ender pearl UUID ({}) in player ({}) save data, skipping", uuid.get(), this.getScoreboardName());
++                return;
++            }
++            this.loadAndSpawnEnderPearl(pearlInput);
++        });
++        // Lophine end - restore vanilla ender pearl loading on Folia
+     }
+ 
+     private void loadAndSpawnEnderPearl(final ValueInput pearlInput) {
+@@ -811,24 +835,53 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+             if (pearlLevel != null) {
+                 Entity pearl = EntityType.loadEntityRecursive(
+                     pearlInput, pearlLevel, EntitySpawnReason.LOAD, net.minecraft.world.entity.EntityProcessor.NOP); // Folia - region threading - delay world add
+-                if (pearl != null) {
++                // Lophine start - restore vanilla ender pearl loading on Folia
++                if (pearl instanceof ThrownEnderpearl loadedPearl) {
+                     // Folia start - region threading
+                     io.papermc.paper.threadedregions.RegionizedServer.getInstance().taskQueue.queueOrExecuteTickTask(
+-                            pearlLevel, pearl.chunkPosition().x(), pearl.chunkPosition().z(), () -> {
+-                                pearlLevel.addFreshEntityWithPassengers(pearl);
+-                                ServerPlayer.placeEnderPearlTicket(pearlLevel, pearl.chunkPosition());
++                            pearlLevel, loadedPearl.chunkPosition().x(), loadedPearl.chunkPosition().z(), () -> {
++                                this.spawnOrAdoptLoadedEnderPearl(pearlLevel, loadedPearl);
+                             }
+                     );
+                     // Folia end - region threading
+                 } else {
++                    if (pearl != null) {
++                        pearl.discard(null);
++                    }
+                     LOGGER.warn("Failed to spawn player ender pearl in level ({}), skipping", pearlLevelKey.get());
+                 }
++                // Lophine end - restore vanilla ender pearl loading on Folia
+             } else {
+                 LOGGER.warn("Trying to load ender pearl without level ({}) being loaded, skipping", pearlLevelKey.get());
+             }
+         }
+     }
+ 
++    // Lophine start - restore vanilla ender pearl loading on Folia
++    private void spawnOrAdoptLoadedEnderPearl(final ServerLevel pearlLevel, final ThrownEnderpearl loadedPearl) {
++        Entity existing = pearlLevel.getEntity(loadedPearl.getUUID());
++        if (existing instanceof ThrownEnderpearl existingPearl && existingPearl.isOwnedBy(this)) {
++            if (loadedPearl != existingPearl) {
++                this.deregisterEnderPearl(loadedPearl);
++                loadedPearl.discard(null);
++            }
++            this.registerEnderPearl(existingPearl);
++            existingPearl.updateLastSavedEnderPearlTag();
++            ServerPlayer.placeEnderPearlTicket(pearlLevel, existingPearl.chunkPosition());
++            return;
++        }
++
++        if (pearlLevel.moonrise$getEntityLookup().hasEntity(loadedPearl.getUUID()) || !pearlLevel.tryAddFreshEntityWithPassengers(loadedPearl)) {
++            LOGGER.warn("Failed to spawn player ender pearl ({}) in level ({}) due to conflict, discarding duplicate", loadedPearl.getUUID(), pearlLevel.dimension().identifier());
++            this.deregisterEnderPearl(loadedPearl);
++            loadedPearl.discard(null);
++            return;
++        }
++
++        ServerPlayer.placeEnderPearlTicket(pearlLevel, loadedPearl.chunkPosition());
++    }
++    // Lophine end - restore vanilla ender pearl loading on Folia
++
+     public void setExperiencePoints(final int amount) {
+         float limit = this.getXpNeededForNextLevel();
+         float max = (limit - 1.0F) / limit;
+@@ -3547,11 +3600,11 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
      }
  
      public void registerEnderPearl(final ThrownEnderpearl enderPearl) {
@@ -89,7 +170,7 @@ index 8c0772791543c027fe36c2259b01c052b4bfa068..e0b8d9eca13840db0aa4baf77ab178e9
  
          level.removePlayerImmediately(player, Entity.RemovalReason.UNLOADED_WITH_PLAYER);
 diff --git a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
-index 4df9a3356cfdee52761db47694e59779976840db..3e6844a468d8e6c9cf3b0bd23e21a3cabc9b7f51 100644
+index 4df9a3356cfdee52761db47694e59779976840db..501147f99c139f028f6df66de78f9a43906fafdd 100644
 --- a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
 +++ b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
 @@ -31,7 +31,11 @@ import net.minecraft.world.phys.Vec3;
@@ -114,7 +195,7 @@ index 4df9a3356cfdee52761db47694e59779976840db..3e6844a468d8e6c9cf3b0bd23e21a3ca
      }
  
      @Override
-@@ -51,21 +58,73 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
+@@ -51,21 +58,85 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
          this.deregisterFromCurrentOwner();
          super.setOwner(owner);
          this.registerToCurrentOwner();
@@ -145,6 +226,18 @@ index 4df9a3356cfdee52761db47694e59779976840db..3e6844a468d8e6c9cf3b0bd23e21a3ca
      }
  
 +    // Lophine start - restore vanilla ender pearl loading on Folia
++    @Override
++    public boolean shouldBeSaved() {
++        if (!this.level().paperConfig().misc.legacyEnderPearlBehavior && this.owner != null) {
++            return false;
++        }
++        return super.shouldBeSaved();
++    }
++
++    public boolean isOwnedBy(final Entity entity) {
++        return this.owner != null && this.owner.matches(entity);
++    }
++
 +    public net.minecraft.nbt.@Nullable CompoundTag getLastSavedEnderPearlTag() {
 +        net.minecraft.nbt.CompoundTag tag = this.lastSavedEnderPearlTag;
 +        return tag == null ? null : tag.copy();
@@ -190,7 +283,7 @@ index 4df9a3356cfdee52761db47694e59779976840db..3e6844a468d8e6c9cf3b0bd23e21a3ca
      private static @Nullable Entity findOwnerIncludingDeadPlayer(final ServerLevel serverLevel, final UUID uuid) {
          Entity owner = serverLevel.getEntityInAnyDimension(uuid);
          return owner != null ? owner : serverLevel.getServer().getPlayerList().getPlayer(uuid);
-@@ -283,6 +342,9 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
+@@ -283,6 +354,9 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
                      && owner instanceof ServerPlayer serverPlayer) {
                      this.ticketTimer = serverPlayer.registerAndUpdateEnderPearlTicket(this);
                  }
@@ -200,7 +293,7 @@ index 4df9a3356cfdee52761db47694e59779976840db..3e6844a468d8e6c9cf3b0bd23e21a3ca
              }
          } else {
              super.tick();
-@@ -330,6 +392,9 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
+@@ -330,6 +404,9 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
      public void onRemoval(final Entity.RemovalReason reason) {
          if (reason != Entity.RemovalReason.UNLOADED_WITH_PLAYER) {
              this.deregisterFromCurrentOwner();
