@@ -144,7 +144,7 @@ public class ServuxHudDataProtocol implements LeavesProtocol {
         ListTag list = new ListTag();
 
         recipes.forEach((recipeEntry -> {
-            DataResult<Tag> dr = Recipe.DIRECT_CODEC.encodeStart(player.registryAccess().createSerializationContext(NbtOps.INSTANCE), recipeEntry.value());
+            DataResult<Tag> dr = Recipe.CODEC.encodeStart(player.registryAccess().createSerializationContext(NbtOps.INSTANCE), recipeEntry.value());
 
             if (dr.result().isPresent()) {
                 CompoundTag entry = new CompoundTag();
